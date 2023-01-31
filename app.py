@@ -145,7 +145,7 @@ def get_pdf():
 
         global file_name
         # Get the pdf file name
-        file_name = url.split("/")[-1].replace("%", "404")
+        file_name = url.split("/")[-1].replace("?", "404")
         print("this is file name", file_name)
 
         # Check if the file name has .pdf extension
