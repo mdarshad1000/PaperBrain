@@ -142,11 +142,11 @@ def get_pdf():
 
         # Get firebase url of the pdf
         url = request.json["pdfURL"]
-        print("This is the pdf url", url)
 
         global file_name
         # Get the pdf file name
-        file_name = url.split("/")[-1]
+        file_name = url.split("/")[-1].replace("%", "404")
+        print("this is file name", file_name)
 
         # Check if the file name has .pdf extension
         if not file_name.endswith(".pdf"):
@@ -194,11 +194,9 @@ def chat():
             os.remove(file_path) 
 
 
-    
     # Get the path of the index
     index_path = f"static/index/{file_name}.json"
     
-    print("this is the index path",index_path)
 
     # Loads all the data from the pdfs folder
     documents = SimpleDirectoryReader(folder_path).load_data()
