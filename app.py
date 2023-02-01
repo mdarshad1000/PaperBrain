@@ -114,11 +114,8 @@ def explain():
         
     return "<h1>This is working as well</h1>"
 
-# Declare global variables
 file_name = None
 folder_path = None
-index_path = None
-index = None
 
 @cross_origin(supports_credentials=True)
 @app.route('/getpdf', methods=['GET', 'POST'])
@@ -129,6 +126,15 @@ def get_pdf():
 
         global folder_path
         folder_path = "static/pdfs"
+        
+        # Get all the pdf files in the folder
+        files = os.listdir(folder_path)
+        
+        # Remove all the files in the folder before downloading the new one
+        for file in files:
+            file_path = os.path.join(folder_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
 
         # Get firebase url of the pdf
         url = request.json["pdfURL"]
@@ -156,48 +162,6 @@ def get_pdf():
         with open(file_path, 'wb') as f:
             f.write(response.content)
 
-        # Get all the pdf files in the folder
-        files = os.listdir(folder_path)
-        print(files)
-        
-        # Remove all the previous PDFs in the folder and index the currently uploaded pdf
-        for file in files:
-            if file != file_name:
-                file_path = os.path.join(folder_path, file)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            else:
-                global index_path
-
-                # Get the path of the index
-                index_path = f"static/index/{file_name}.json"
-                print("this is index path", index_path)
-                
-                # Loads all the data from the pdfs folder
-                documents = SimpleDirectoryReader(folder_path).load_data()
-
-                # builds an index over the documents in the data folder
-                global index
-                index = GPTSimpleVectorIndex(documents)
-
-                # save the index to disk
-                index.save_to_disk(index_path)
-
-                # define prompt helper
-                # set maximum input size
-                max_input_size = 4096
-                # set number of output tokens
-                num_output = 256
-                # set maximum chunk overlap
-                max_chunk_overlap = 20
-                prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap)
-
-                # define the llm to be used
-                llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="text-davinci-003"))
-
-                # load from disk
-                index = GPTSimpleVectorIndex.load_from_disk(index_path, llm_predictor=llm_predictor, prompt_helper=prompt_helper)
-
         return "PDF Downloaded!"
 
     return "<h1>This is working as well!</h1>"
@@ -209,6 +173,27 @@ def chat():
 
     # Get question from user about the uploaded pdf 
     query = request.json["message"] if request.json["message"] else ""
+
+    global folder_path
+
+    # Set path of indexed jsons
+    global file_name
+    index_path = f"static/index/{file_name}.json"
+    
+    # Loads all the data from the pdfs folder
+    documents = SimpleDirectoryReader(folder_path).load_data()
+
+    # builds an index over the documents in the data folder
+    index = GPTSimpleVectorIndex(documents)
+
+    # save the index to disk
+    index.save_to_disk(index_path)
+
+    # define the llm to be used
+    llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="text-davinci-003"))
+
+    # load from disk
+    index = GPTSimpleVectorIndex.load_from_disk(index_path, llm_predictor=llm_predictor)
 
     # Get the response
     response = index.query(query, verbose=False, response_mode="default")
