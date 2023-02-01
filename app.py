@@ -26,6 +26,7 @@ CORS(app,)
 
 # Sort by relevance
 @cross_origin('*')
+@cross_origin(supports_credentials=True)
 @app.route('/', methods=['GET', 'POST'])
 def home():
 
