@@ -26,7 +26,6 @@ CORS(app,)
 
 # Sort by relevance
 @cross_origin('*')
-@cross_origin(supports_credentials=True)
 @app.route('/', methods=['GET', 'POST'])
 def home():
 
@@ -51,7 +50,6 @@ def home():
             'paper_summary':result.summary,
             'paper_authors':", ".join([author.name for author in result.authors]),
         }
-        print(papers_json)
 
         papers_list.append(papers_json)
 
@@ -85,7 +83,6 @@ def index():
             'paper_summary':result.summary,
             'paper_authors':", ".join([author.name for author in result.authors]),
         }
-        print(papers_json)
 
         
         # print(papers_json)
@@ -112,8 +109,6 @@ def explain():
         presence_penalty=0
         )
         final_response = response["choices"][0]["text"].lstrip()
-
-        print(final_response)
 
         return {"answer":final_response}
         
@@ -184,6 +179,7 @@ def chat():
     # Set path of indexed jsons
     global file_name
     index_path = f"static/index/{file_name}.json"
+    print("this is index path", index_path)
 
     # Get all the index.json in the folder
     files = os.listdir(folder_path)
