@@ -5,8 +5,9 @@ from flask_cors import CORS, cross_origin
 import openai
 import os
 import requests
-from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor, PromptHelper
+from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
+
 # from azure.storage.blob import BlobServiceClient
 
 # connect_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
@@ -83,8 +84,7 @@ def index():
             'paper_summary':result.summary,
             'paper_authors':", ".join([author.name for author in result.authors]),
         }
-
-        
+  
         # print(papers_json)
         papers_list.append(papers_json)
 
@@ -114,8 +114,8 @@ def explain():
         
     return "<h1>This is working as well</h1>"
 
+
 file_name = None
-folder_path = None
 
 @cross_origin(supports_credentials=True)
 @app.route('/getpdf', methods=['GET', 'POST'])
@@ -123,65 +123,64 @@ def get_pdf():
 
     # Download the uploaded pdf from Firebase link
     if request.method == 'POST':
-
-        global folder_path
-        folder_path = "static/pdfs"
         
+        # Get firebase url of the pdf
+        url = request.json["pdfURL"]
+        parsed_url = url.split("/")[-1].replace("?", "404")
+
+        if not parsed_url.endswith(".pdf"):
+            parsed_url += ".pdf"
+
+        f_path = f"static/pdfs/{parsed_url}/"
+    
+        # Check if the folder exists else create one
+        if not os.path.exists(f_path):
+            os.mkdir(f_path)
+            
         # Get all the pdf files in the folder
-        files = os.listdir(folder_path)
+        files = os.listdir(f_path)
         
         # Remove all the files in the folder before downloading the new one
         for file in files:
-            file_path = os.path.join(folder_path, file)
+            file_path = os.path.join(f_path, file)
             if os.path.isfile(file_path):
                 os.remove(file_path)
-
-        # Get firebase url of the pdf
-        url = request.json["pdfURL"]
 
         global file_name
         # Get the pdf file name
         file_name = url.split("/")[-1].replace("?", "404")
-        print("this is file name", file_name)
 
         # Check if the file name has .pdf extension
         if not file_name.endswith(".pdf"):
             file_name += ".pdf"
         
-        folder_path = "static/pdfs"
-
-        # Check if the folder exists else create one
-        if not os.path.exists(folder_path):
-            os.mkdir(folder_path)
-            
         # Create the file path
-        file_path = os.path.join(folder_path, file_name)
+        file_path = os.path.join(f_path, file_name)
 
         # Download the pdf
         response = requests.get(url)
         with open(file_path, 'wb') as f:
             f.write(response.content)
 
-        return "PDF Downloaded!"
+        return {"f_path": f_path}
 
     return "<h1>This is working as well!</h1>"
 
 
-@cross_origin(supports_credentials=True)
+# @cross_origin(supports_credentials=True)
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
+
+    f_path = request.json["f_path"] if request.json["f_path"] else ""
 
     # Get question from user about the uploaded pdf 
     query = request.json["message"] if request.json["message"] else ""
 
-    global folder_path
-
     # Set path of indexed jsons
     global file_name
     index_path = f"static/index/{file_name}.json"
-    
-    # Loads all the data from the pdfs folder
-    documents = SimpleDirectoryReader(folder_path).load_data()
+
+    documents = SimpleDirectoryReader(f_path).load_data()
 
     # builds an index over the documents in the data folder
     index = GPTSimpleVectorIndex(documents)
@@ -200,6 +199,7 @@ def chat():
     final_answer = str(response)
     
     return {"answer":final_answer}
+
 
 if __name__ == '__main__':
     app.run()
