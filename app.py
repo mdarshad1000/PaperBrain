@@ -8,15 +8,6 @@ import requests
 from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
 
-# from azure.storage.blob import BlobServiceClient
-
-# connect_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-# container_name = "pdfs"
-# container2_name = "index"
-
-# Create a blob service client to interact with the storage account
-# blob_service_client = BlobServiceClient.from_connection_string(conn_str=connect_str)
-
 # Set API Key
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
