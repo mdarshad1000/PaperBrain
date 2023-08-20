@@ -20,9 +20,9 @@ CORS(app,)
 @cross_origin('*')
 @app.route('/', methods=['GET', 'POST'])
 def home():
-
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
+
 
     # Search for papers
     search_paper = arxiv.Search(
