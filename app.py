@@ -7,9 +7,11 @@ import os
 import requests
 from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
+import uuid
+from urllib.parse import urlparse
 
 # Set API Key
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+openai.api_key = "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"  #os.environ.get("OPENAI_API_KEY")
 
 # Initialize Flask app and enable CORS
 app = Flask(__name__)
@@ -22,7 +24,6 @@ CORS(app,)
 def home():
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
-
 
     # Search for papers
     search_paper = arxiv.Search(
@@ -114,83 +115,62 @@ def get_pdf():
 
     # Download the uploaded pdf from Firebase link
     if request.method == 'POST':
-        
-        # Get firebase url of the pdf
+
         url = request.json["pdfURL"]
-        parsed_url = url.split("/")[-1].replace("?", "404")
-
-        if not parsed_url.endswith(".pdf"):
-            parsed_url += ".pdf"
-
-        f_path = f"static/pdfs/{parsed_url}/"
-    
-        # Check if the folder exists else create one
-        if not os.path.exists(f_path):
-            os.mkdir(f_path)
-            
-        # Get all the pdf files in the folder
-        files = os.listdir(f_path)
-        
-        # Remove all the files in the folder before downloading the new one
-        for file in files:
-            file_path = os.path.join(f_path, file)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-
-        global file_name
-        # Get the pdf file name
-        file_name = url.split("/")[-1].replace("?", "404")
-
-        # Check if the file name has .pdf extension
-        if not file_name.endswith(".pdf"):
-            file_name += ".pdf"
-        
-        # Create the file path
-        file_path = os.path.join(f_path, file_name)
-
-        # Download the pdf
+        parsed_url = urlparse(url)
+        pdf = os.path.basename(parsed_url.path)
+        f_path = str(uuid.uuid4())   # unique identifier for each user
         response = requests.get(url)
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
 
-        return {"f_path": f_path}
+        if not os.path.exists(f'static/pdfs/{pdf}'):
+            os.makedirs(f'static/pdfs/{f_path}')
 
-    return "<h1>This is working as well!</h1>"
+        # Check if the request was successful
+        if response.status_code == 200:
+            with open(f'static/pdfs/{f_path}/{pdf}.pdf', 'wb') as f:
+                f.write(response.content)
 
-
+        return {"f_path":f_path}
+    
 # @cross_origin(supports_credentials=True)
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
-
     f_path = request.json["f_path"] if request.json["f_path"] else ""
-
-    # Get question from user about the uploaded pdf 
     query = request.json["message"] if request.json["message"] else ""
 
-    # Set path of indexed jsons
-    global file_name
-    index_path = f"static/index/{file_name}.json"
-
-    documents = SimpleDirectoryReader(f_path).load_data()
-
-    # builds an index over the documents in the data folder
-    index = GPTSimpleVectorIndex(documents)
-
-    # save the index to disk
-    index.save_to_disk(index_path)
-
-    # define the llm to be used
-    llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="text-davinci-003"))
-
-    # load from disk
-    index = GPTSimpleVectorIndex.load_from_disk(index_path, llm_predictor=llm_predictor)
-
-    # Get the response
-    response = index.query(query, verbose=False, response_mode="default")
-    final_answer = str(response)
+    if os.path.exists(f'static/index/{f_path}.json'):
+        print("Loading index loop")
+        # load from disk
+        loaded_index = GPTSimpleVectorIndex.load_from_disk(f'static/index/{f_path}.json')
+        response = loaded_index.query(query, verbose=True, response_mode="default")
+        final_answer = str(response)
+        return {"answer":final_answer}
     
-    return {"answer":final_answer}
+    else:
+        print("Creating index loop")
+        # Set path of indexed jsons
+        index_path = f"static/index/{f_path}.json"
 
+        documents = SimpleDirectoryReader(f'static/pdfs/{f_path}').load_data()
+
+        # builds an index over the documents in the data folder
+        index = GPTSimpleVectorIndex(documents)
+
+        # save the index to disk
+        index.save_to_disk(index_path)
+
+        # define the llm to be used
+        llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="text-davinci-003"))
+
+        # load from disk
+        loaded_index = GPTSimpleVectorIndex.load_from_disk(index_path, llm_predictor=llm_predictor)
+        response = loaded_index.query(query, verbose=True, response_mode="default")
+
+        final_answer = str(response)
+        return {"answer":final_answer}
+
+
+        
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
