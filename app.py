@@ -11,7 +11,7 @@ import uuid
 from urllib.parse import urlparse
 
 # Set API Key
-openai.api_key = "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"  #os.environ.get("OPENAI_API_KEY")
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Initialize Flask app and enable CORS
 app = Flask(__name__)
