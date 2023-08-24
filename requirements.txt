@@ -11,4 +11,4 @@ openai==0.23.0
 python-dotenv==0.21.0
 gpt-index==0.2.6
 pyPDF2==3.0.1
-langchain
+langchain==0.0.59
