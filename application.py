@@ -14,13 +14,13 @@ from urllib.parse import urlparse
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Initialize Flask app and enable CORS
-app = Flask(__name__)
-CORS(app,)
+application = Flask(__name__)
+CORS(application,)
 
 
 # Sort by relevance
 @cross_origin('*')
-@app.route('/', methods=['GET', 'POST'])
+@application.route('/', methods=['GET', 'POST'])
 def home():
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
@@ -52,7 +52,7 @@ def home():
 
 # Sort by last updated
 @cross_origin('*')
-@app.route('/lastUpdated', methods=['GET', 'POST'])
+@application.route('/lastUpdated', methods=['GET', 'POST'])
 def index():
 
     # Get query from user
@@ -85,21 +85,32 @@ def index():
 
 
 @cross_origin(supports_credentials=True)
-@app.route('/explain', methods=['POST'])
+@application.route('/explain', methods=['POST'])
 def explain():
 
     # Explain the text for Papers loaded via arXiv
     if request.method == 'POST':
-        query = request.json['message']
-        print(query)
-        
-        
+        excerpt = request.json
+        response = openai.Completion.create(
+        model="text-davinci-002",
+        prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
+        temperature=0.8,
+        max_tokens=293,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+        )
+        final_response = response["choices"][0]["text"].lstrip()
+
+        return {"answer":final_response}
         
     return "<h1>This is working as well</h1>"
 
 
+file_name = None
+
 @cross_origin(supports_credentials=True)
-@app.route('/getpdf', methods=['GET', 'POST'])
+@application.route('/getpdf', methods=['GET', 'POST'])
 def get_pdf():
 
     # Download the uploaded pdf from Firebase link
@@ -121,9 +132,8 @@ def get_pdf():
 
         return {"f_path":f_path}
     
-
 # @cross_origin(supports_credentials=True)
-@app.route('/chat', methods=['GET', 'POST'])
+@application.route('/chat', methods=['GET', 'POST'])
 def chat():
     f_path = request.json["f_path"] if request.json["f_path"] else ""
     query = request.json["message"] if request.json["message"] else ""
@@ -159,8 +169,5 @@ def chat():
         final_answer = str(response)
         return {"answer":final_answer}
 
-
-        
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
