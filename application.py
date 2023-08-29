@@ -10,17 +10,18 @@ from langchain import OpenAI
 import uuid
 from urllib.parse import urlparse
 
+
 # Set API Key
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Initialize Flask app and enable CORS
-application = Flask(__name__)
-CORS(application,)
+app = Flask(__name__)
+CORS(app,)
 
 
 # Sort by relevance
 @cross_origin('*')
-@application.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def home():
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
@@ -52,7 +53,7 @@ def home():
 
 # Sort by last updated
 @cross_origin('*')
-@application.route('/lastUpdated', methods=['GET', 'POST'])
+@app.route('/lastUpdated', methods=['GET', 'POST'])
 def index():
 
     # Get query from user
@@ -85,7 +86,7 @@ def index():
 
 
 @cross_origin(supports_credentials=True)
-@application.route('/explain', methods=['POST'])
+@app.route('/explain', methods=['POST'])
 def explain():
 
     # Explain the text for Papers loaded via arXiv
@@ -107,10 +108,8 @@ def explain():
     return "<h1>This is working as well</h1>"
 
 
-file_name = None
-
 @cross_origin(supports_credentials=True)
-@application.route('/getpdf', methods=['GET', 'POST'])
+@app.route('/getpdf', methods=['GET', 'POST'])
 def get_pdf():
 
     # Download the uploaded pdf from Firebase link
@@ -133,7 +132,7 @@ def get_pdf():
         return {"f_path":f_path}
     
 # @cross_origin(supports_credentials=True)
-@application.route('/chat', methods=['GET', 'POST'])
+@app.route('/chat', methods=['GET', 'POST'])
 def chat():
     f_path = request.json["f_path"] if request.json["f_path"] else ""
     query = request.json["message"] if request.json["message"] else ""
@@ -170,4 +169,4 @@ def chat():
         return {"answer":final_answer}
 
 if __name__ == '__main__':
-    application.run(debug=True)
+    app.run(debug=True)
