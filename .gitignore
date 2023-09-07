@@ -1,5 +1,5 @@
 .env
 .DS_Store
-app2.py
+misc.py
 __pycache__
 ArxivSearch.ipynb
