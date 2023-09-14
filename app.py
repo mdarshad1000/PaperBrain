@@ -114,7 +114,7 @@ def get_pdf():
 
     # Download the uploaded pdf from Firebase link
     if request.method == 'POST':
-
+        
         url = request.json["pdfURL"]
         parsed_url = urlparse(url)
         pdf = os.path.basename(parsed_url.path)
