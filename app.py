@@ -9,6 +9,7 @@ from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
 import uuid
 from urllib.parse import urlparse
+import shutil
 
 
 # Set API Key
@@ -29,7 +30,7 @@ def home():
     # Search for papers
     search_paper = arxiv.Search(
         query=user_query,
-        max_results=100,
+        max_results=500,
         sort_by=arxiv.SortCriterion.Relevance
     )
     
@@ -62,7 +63,7 @@ def index():
     # Search for papers
     search_paper = arxiv.Search(
         query=user_query,
-        max_results=100,
+        max_results=500,
         sort_by=arxiv.SortCriterion.SubmittedDate
     )
     
@@ -83,6 +84,7 @@ def index():
 
     res = {"papers": papers_list}
     return res, 200, {'Access-Control-Allow-Origin': '*'}
+
 
 
 @cross_origin(supports_credentials=True)
@@ -114,14 +116,15 @@ def get_pdf():
 
     # Download the uploaded pdf from Firebase link
     if request.method == 'POST':
-        
         url = request.json["pdfURL"]
         parsed_url = urlparse(url)
         pdf = os.path.basename(parsed_url.path)
+        print("This is pdf",pdf)
         f_path = str(uuid.uuid4())   # unique identifier for each user
+        print(f"This is {f_path}")
         response = requests.get(url)
 
-        if not os.path.exists(f'static/pdfs/{pdf}'):
+        if not os.path.exists(f'static/pdfs/{f_path}'):
             os.makedirs(f'static/pdfs/{f_path}')
 
         # Check if the request was successful
@@ -139,6 +142,17 @@ def chat():
 
     if os.path.exists(f'static/index/{f_path}.json'):
         print("Loading index loop")
+
+        # remove the uploaded pdf once indexed
+        directory_to_delete = f'static/pdfs/{f_path}'
+        try:
+            # Use shutil.rmtree() to remove the directory and its contents
+            shutil.rmtree(directory_to_delete)
+            print(f"Directory '{directory_to_delete}' and its contents have been successfully deleted.")
+        except OSError as e:
+            print(f"Error: {e}")
+
+
         # load from disk
         loaded_index = GPTSimpleVectorIndex.load_from_disk(f'static/index/{f_path}.json')
         response = loaded_index.query(query, verbose=True, response_mode="default")
@@ -148,6 +162,7 @@ def chat():
     else:
         print("Creating index loop")
         # Set path of indexed jsons
+
         index_path = f"static/index/{f_path}.json"
 
         documents = SimpleDirectoryReader(f'static/pdfs/{f_path}').load_data()
@@ -169,4 +184,4 @@ def chat():
         return {"answer":final_answer}
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
