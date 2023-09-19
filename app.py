@@ -30,7 +30,7 @@ def home():
     # Search for papers
     search_paper = arxiv.Search(
         query=user_query,
-        max_results=500,
+        max_results=100,
         sort_by=arxiv.SortCriterion.Relevance
     )
     
@@ -63,7 +63,7 @@ def index():
     # Search for papers
     search_paper = arxiv.Search(
         query=user_query,
-        max_results=500,
+        max_results=100,
         sort_by=arxiv.SortCriterion.SubmittedDate
     )
     
@@ -119,9 +119,7 @@ def get_pdf():
         url = request.json["pdfURL"]
         parsed_url = urlparse(url)
         pdf = os.path.basename(parsed_url.path)
-        print("This is pdf",pdf)
         f_path = str(uuid.uuid4())   # unique identifier for each user
-        print(f"This is {f_path}")
         response = requests.get(url)
 
         if not os.path.exists(f'static/pdfs/{f_path}'):
