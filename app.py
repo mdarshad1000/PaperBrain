@@ -179,6 +179,7 @@ def chat():
         response = loaded_index.query(query, verbose=True, response_mode="default")
 
         final_answer = str(response)
+        print(f"This is the the response for your question\nQuestion: {query}\nAnswer{final_answer}")
         return {"answer":final_answer}
 
 if __name__ == '__main__':
