@@ -142,13 +142,13 @@ def chat():
         print("Loading index loop")
 
         # remove the uploaded pdf once indexed
-        directory_to_delete = f'static/pdfs/{f_path}'
-        try:
-            # Use shutil.rmtree() to remove the directory and its contents
-            shutil.rmtree(directory_to_delete)
-            print(f"Directory '{directory_to_delete}' and its contents have been successfully deleted.")
-        except OSError as e:
-            print(f"Error: {e}")
+        # directory_to_delete = f'static/pdfs/{f_path}'
+        # try:
+        #     # Use shutil.rmtree() to remove the directory and its contents
+        #     shutil.rmtree(directory_to_delete)
+        #     print(f"Directory '{directory_to_delete}' and its contents have been successfully deleted.")
+        # except OSError as e:
+        #     print(f"Error: {e}")
 
 
         # load from disk
