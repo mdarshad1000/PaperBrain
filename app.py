@@ -65,7 +65,6 @@ def relevance():
 def lastUpdated():
 
     if request.method == 'POST':
-        
         # Get query from user
         user_query = request.json["query"]
         
@@ -142,8 +141,8 @@ def index_paper():
 @app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
     
-    paper_id = request.json["paper_id"] if request.json["paper_id"] else ""
-    question = request.json["question"] if request.json["question"] else ""
+    paper_id = request.json["f_path"] if request.json["f_path"] else ""
+    question = request.json["message"] if request.json["message"] else ""
 
     answer = ask_questions(question=question, paper_id=paper_id)
 
