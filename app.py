@@ -242,7 +242,7 @@ def chat():
         return {"answer":final_answer}
 
 
-@app.route('/clearpdfs', methods=['POST'])
+@app.route('/clearjsons', methods=['POST'])
 def clear_pdfs():
     pdfs_dir = 'static/index'
     exception_file = 'i.json'
@@ -256,6 +256,13 @@ def clear_pdfs():
         return jsonify(message='JSONs cleared successfully'), 200
     except Exception as e:
         return jsonify(error=str(e)), 500
+
+
+@app.route('/viewstatus', methods=['POST'])
+def view_status():
+    folder_path = 'arxiv_papers'
+    files = os.listdir(folder_path)
+    return {"filename": files}
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
