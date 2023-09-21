@@ -13,8 +13,6 @@ import uuid
 import os
 
 
-
-
 # Set API Key
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -132,6 +130,7 @@ def index_paper():
             embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
 
             return {"paper_id": paper_id}
+
 
 
 @cross_origin(supports_credentials=True)
