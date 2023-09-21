@@ -1,15 +1,18 @@
 # Import dependencies
-from flask import Flask, request
-import arxiv
-from flask_cors import CORS, cross_origin
-import openai
-import os
-import requests
 from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
-import uuid
+from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions
+from flask_cors import CORS, cross_origin
 from urllib.parse import urlparse
+from flask import Flask, request, jsonify
+import requests
+import openai
 import shutil
+import arxiv
+import uuid
+import os
+
+
 
 
 # Set API Key
@@ -20,10 +23,14 @@ app = Flask(__name__)
 CORS(app,)
 
 
+@app.route('/check')
+def check():
+    return 'This is working'
+
 # Sort by relevance
 @cross_origin('*')
 @app.route('/', methods=['GET', 'POST'])
-def home():
+def relevance():
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
 
@@ -54,8 +61,8 @@ def home():
 
 # Sort by last updated
 @cross_origin('*')
-@app.route('/lastUpdated', methods=['GET', 'POST'])
-def index():
+@app.route('/lastupdated', methods=['GET', 'POST'])
+def lastUpdated():
 
     # Get query from user
     user_query = request.json["query"] if request.json["query"] else ""
@@ -86,6 +93,48 @@ def index():
     return res, 200, {'Access-Control-Allow-Origin': '*'}
 
 
+@cross_origin(supports_credentials=True)
+@app.route('/indexpaper', methods=['POST'])
+def index_paper():
+
+    paper_url = request.json['paperurl'] if request.json['paperurl'] else ''
+
+    # Extract the paper ID using string slicing
+    start_index = paper_url.rfind("/") + 1  # Find the index of the last "/"
+    end_index = paper_url.rfind(".pdf")  # Find the index of ".pdf"
+
+    paper_id = ''
+    if start_index != -1 and end_index != -1:
+        paper_id = paper_url[start_index:end_index]
+
+    response = requests.get(paper_url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        with open(f'arxiv_papers/{paper_id}.pdf', 'wb') as f:
+            f.write(response.content)
+    print(paper_id)
+    # Split PDF into chunks
+    texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
+    print("chunked",paper_id)
+
+    # Create embeddings and upsert to Pinecone
+    embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
+
+    return {"paper_id": paper_id}
+
+
+@cross_origin(supports_credentials=True)
+@app.route('/explain-old', methods=['POST'])
+def ask_arxiv():
+    
+    paper_id = request.json["paper_id"] if request.json["paper_id"] else ""
+    question = request.json["question"] if request.json["question"] else ""
+    print(paper_id)
+    answer = ask_questions(question=question, paper_id=paper_id)
+
+    return {"answer": answer}
+
 
 @cross_origin(supports_credentials=True)
 @app.route('/explain', methods=['POST'])
@@ -93,17 +142,18 @@ def explain():
 
     # Explain the text for Papers loaded via arXiv
     if request.method == 'POST':
-        # excerpt = request.json
-        # response = openai.Completion.create(
-        # model="text-davinci-002",
-        # prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
-        # temperature=0.8,
-        # max_tokens=293,
-        # top_p=1,
-        # frequency_penalty=0,
-        # presence_penalty=0
-        # )
-        # final_response = response["choices"][0]["text"].lstrip()
+        excerpt = request.json
+        print(excerpt)
+        response = openai.Completion.create(
+        model="text-davinci-002",
+        prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
+        temperature=0.8,
+        max_tokens=293,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+        )
+        final_response = response["choices"][0]["text"].lstrip()
 
         return {"answer":'Sorry! You cannot chat with the paper right now. Please upload your own paper for now :)'}
         
@@ -181,6 +231,22 @@ def chat():
         final_answer = str(response)
         print(f"This is the the response for your question\nQuestion: {query}\nAnswer{final_answer}")
         return {"answer":final_answer}
+
+
+@app.route('/clearpdfs', methods=['POST'])
+def clear_pdfs():
+    pdfs_dir = 'static/index'
+    exception_file = 'i.json'
+
+    try:
+        for filename in os.listdir(pdfs_dir):
+            if filename != exception_file and filename.endswith('.json'):
+                file_path = os.path.join(pdfs_dir, filename)
+                os.remove(file_path)
+
+        return jsonify(message='JSONs cleared successfully'), 200
+    except Exception as e:
+        return jsonify(error=str(e)), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
