@@ -24,36 +24,39 @@ CORS(app,)
 def check():
     return 'This is working'
 
+
 # Sort by relevance
 @cross_origin('*')
 @app.route('/', methods=['GET', 'POST'])
 def relevance():
-    # Get query from user
-    user_query = request.json["query"] if request.json["query"] else ""
-
-    # Search for papers
-    search_paper = arxiv.Search(
-        query=user_query,
-        max_results=100,
-        sort_by=arxiv.SortCriterion.Relevance
-    )
     
-    # List to store required paper details
-    papers_list = []
-    
-    # Iterate through search results and append paper details to list
-    for result in search_paper.results():
-        papers_json = {
-            'paper_title':result.title,
-            'paper_url':result.pdf_url,
-            'paper_summary':result.summary,
-            'paper_authors':", ".join([author.name for author in result.authors]),
-        }
+    if request.method == 'POST':
+        # Get query from user
+        user_query = request.json["query"]
 
-        papers_list.append(papers_json)
+        # Search for papers
+        search_paper = arxiv.Search(
+            query=user_query,
+            max_results=100,
+            sort_by=arxiv.SortCriterion.Relevance
+        )
+        
+        # List to store required paper details
+        papers_list = []
+        
+        # Iterate through search results and append paper details to list
+        for result in search_paper.results():
+            papers_json = {
+                'paper_title':result.title,
+                'paper_url':result.pdf_url,
+                'paper_summary':result.summary,
+                'paper_authors':", ".join([author.name for author in result.authors]),
+            }
 
-    res = {"papers": papers_list}
-    return res, 200, {'Access-Control-Allow-Origin': '*'}
+            papers_list.append(papers_json)
+
+        res = {"papers": papers_list}
+        return res, 200, {'Access-Control-Allow-Origin': '*'}
 
 
 # Sort by last updated
@@ -61,33 +64,35 @@ def relevance():
 @app.route('/lastupdated', methods=['GET', 'POST'])
 def lastUpdated():
 
-    # Get query from user
-    user_query = request.json["query"] if request.json["query"] else ""
+    if request.method == 'POST':
+        
+        # Get query from user
+        user_query = request.json["query"]
+        
+        # Search for papers
+        search_paper = arxiv.Search(
+            query=user_query,
+            max_results=100,
+            sort_by=arxiv.SortCriterion.SubmittedDate
+        )
+        
+        # List to store required paper details
+        papers_list = []
+        
+        # Iterate through search results and append paper details to list
+        for result in search_paper.results():
+            papers_json = {
+                'paper_title':result.title,
+                'paper_url':result.pdf_url,
+                'paper_summary':result.summary,
+                'paper_authors':", ".join([author.name for author in result.authors]),
+            }
     
-    # Search for papers
-    search_paper = arxiv.Search(
-        query=user_query,
-        max_results=100,
-        sort_by=arxiv.SortCriterion.SubmittedDate
-    )
-    
-    # List to store required paper details
-    papers_list = []
-    
-    # Iterate through search results and append paper details to list
-    for result in search_paper.results():
-        papers_json = {
-            'paper_title':result.title,
-            'paper_url':result.pdf_url,
-            'paper_summary':result.summary,
-            'paper_authors':", ".join([author.name for author in result.authors]),
-        }
-  
-        # print(papers_json)
-        papers_list.append(papers_json)
+            # print(papers_json)
+            papers_list.append(papers_json)
 
-    res = {"papers": papers_list}
-    return res, 200, {'Access-Control-Allow-Origin': '*'}
+        res = {"papers": papers_list}
+        return res, 200, {'Access-Control-Allow-Origin': '*'}
 
 
 @cross_origin(supports_credentials=True)
@@ -263,6 +268,7 @@ def view_status():
     folder_path = 'arxiv_papers'
     files = os.listdir(folder_path)
     return {"filename": files}
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
