@@ -119,11 +119,11 @@ def index_paper():
         flag = check_namespace_exists(paper_id=paper_id)
 
         if flag is True:
-            
+            print("already indexed")
             return {"paper_id": paper_id}
         
         else:
-            print(paper_id)
+            print("not indexed")
             # Split PDF into chunks
             texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
             print("chunked",paper_id)
@@ -135,7 +135,7 @@ def index_paper():
 
 
 @cross_origin(supports_credentials=True)
-@app.route('/explain-old', methods=['POST'])
+@app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
     
     paper_id = request.json["paper_id"] if request.json["paper_id"] else ""

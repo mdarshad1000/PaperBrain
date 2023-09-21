@@ -146,7 +146,7 @@ def check_namespace_exists(paper_id):
 
 
 def delete_namespace():
-    
+
     initialize_pinecone()
     index = pinecone.Index('ai-journal') 
 
