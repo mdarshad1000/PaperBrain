@@ -129,9 +129,33 @@ def ask_questions(question: str, paper_id: int):
     return qa.run(f'question: {question}')
 
 
+def check_namespace_exists(paper_id):
 
-# index = initialize_pinecone()
+    initialize_pinecone()
+    index = pinecone.Index('ai-journal') 
+    index_stats_response = index.describe_index_stats()
+    stats_str = str(index_stats_response)
 
+    flag = None
+    if paper_id in stats_str:
+        flag = True
+    else:
+        flag = False
+
+    return flag
+
+
+def delete_namespace():
+    
+    initialize_pinecone()
+    index = pinecone.Index('ai-journal') 
+
+    delete_response = index.delete(delete_all=True, namespace='1234.pdf')
+
+# stats_str = stats_str.replace("'", "\"")
+# stats_dict = json.loads(stats_str)
+# answer = [i.keys() for i in stats_dict["namespaces"]]
+# print(answer)
 # index.delete(delete_all=True, namespace="1234.pdf")
 
 # paper_ida, textsa, metadatasa = split_pdf_into_chunks('1234.pdf')

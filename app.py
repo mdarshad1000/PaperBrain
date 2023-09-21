@@ -1,7 +1,7 @@
 # Import dependencies
 from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
-from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions
+from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists
 from flask_cors import CORS, cross_origin
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
@@ -97,31 +97,41 @@ def lastUpdated():
 @app.route('/indexpaper', methods=['POST'])
 def index_paper():
 
-    paper_url = request.json['paperurl'] if request.json['paperurl'] else ''
+    if request.method == 'POST':
 
-    # Extract the paper ID using string slicing
-    start_index = paper_url.rfind("/") + 1  # Find the index of the last "/"
-    end_index = paper_url.rfind(".pdf")  # Find the index of ".pdf"
+        paper_url = request.json['paperurl'] if request.json['paperurl'] else ''
 
-    paper_id = ''
-    if start_index != -1 and end_index != -1:
-        paper_id = paper_url[start_index:end_index]
+        # Extract the paper ID using string slicing
+        start_index = paper_url.rfind("/") + 1  # Find the index of the last "/"
+        end_index = paper_url.rfind(".pdf")  # Find the index of ".pdf"
 
-    response = requests.get(paper_url)
+        paper_id = None
+        if start_index != -1 and end_index != -1:
+            paper_id = paper_url[start_index:end_index]
 
-    # Check if the request was successful
-    if response.status_code == 200:
-        with open(f'arxiv_papers/{paper_id}.pdf', 'wb') as f:
-            f.write(response.content)
-    print(paper_id)
-    # Split PDF into chunks
-    texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
-    print("chunked",paper_id)
+        response = requests.get(paper_url)
 
-    # Create embeddings and upsert to Pinecone
-    embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
+        # Check if the request was successful
+        if response.status_code == 200:
+            with open(f'arxiv_papers/{paper_id}.pdf', 'wb') as f:
+                f.write(response.content)
 
-    return {"paper_id": paper_id}
+        flag = check_namespace_exists(paper_id=paper_id)
+
+        if flag is True:
+            
+            return {"paper_id": paper_id}
+        
+        else:
+            print(paper_id)
+            # Split PDF into chunks
+            texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
+            print("chunked",paper_id)
+
+            # Create embeddings and upsert to Pinecone
+            embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
+
+            return {"paper_id": paper_id}
 
 
 @cross_origin(supports_credentials=True)
@@ -130,7 +140,7 @@ def ask_arxiv():
     
     paper_id = request.json["paper_id"] if request.json["paper_id"] else ""
     question = request.json["question"] if request.json["question"] else ""
-    print(paper_id)
+
     answer = ask_questions(question=question, paper_id=paper_id)
 
     return {"answer": answer}
