@@ -106,13 +106,6 @@ def index_paper():
         if start_index != -1 and end_index != -1:
             paper_id = paper_url[start_index:end_index]
 
-        response = requests.get(paper_url)
-
-        # Check if the request was successful
-        if response.status_code == 200:
-            with open(f'arxiv_papers/{paper_id}.pdf', 'wb') as f:
-                f.write(response.content)
-
         flag = check_namespace_exists(paper_id=paper_id)
 
         if flag is True:
@@ -121,6 +114,14 @@ def index_paper():
         
         else:
             print("not indexed")
+
+            response = requests.get(paper_url)
+
+            # Check if the request was successful and download the pdf
+            if response.status_code == 200:
+                with open(f'arxiv_papers/{paper_id}.pdf', 'wb') as f:
+                    f.write(response.content)
+
             # Split PDF into chunks
             texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
             print("chunked",paper_id)
