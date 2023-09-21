@@ -142,18 +142,18 @@ def explain():
 
     # Explain the text for Papers loaded via arXiv
     if request.method == 'POST':
-        excerpt = request.json
-        print(excerpt)
-        response = openai.Completion.create(
-        model="text-davinci-002",
-        prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
-        temperature=0.8,
-        max_tokens=293,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-        )
-        final_response = response["choices"][0]["text"].lstrip()
+        # excerpt = request.json
+        # print(excerpt)
+        # response = openai.Completion.create(
+        # model="text-davinci-002",
+        # prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
+        # temperature=0.8,
+        # max_tokens=293,
+        # top_p=1,
+        # frequency_penalty=0,
+        # presence_penalty=0
+        # )
+        # final_response = response["choices"][0]["text"].lstrip()
 
         return {"answer":'Sorry! You cannot chat with the paper right now. Please upload your own paper for now :)'}
         
