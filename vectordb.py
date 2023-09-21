@@ -43,7 +43,7 @@ def split_pdf_into_chunks(paper_id: str):
     # Create a splitter object
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=2000,
-        chunk_overlap=0,
+        chunk_overlap=400,
     )
     print("Split function got paper id as", paper_id)
     # load the PDF
@@ -132,6 +132,7 @@ def ask_questions(question: str, paper_id: int):
 def check_namespace_exists(paper_id):
 
     initialize_pinecone()
+    
     index = pinecone.Index('ai-journal') 
     index_stats_response = index.describe_index_stats()
     stats_str = str(index_stats_response)

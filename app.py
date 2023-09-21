@@ -1,7 +1,7 @@
 # Import dependencies
 from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
 from langchain import OpenAI
-from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists
+from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists, initialize_pinecone
 from flask_cors import CORS, cross_origin
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
@@ -99,7 +99,7 @@ def lastUpdated():
 def index_paper():
 
     if request.method == 'POST':
-
+        initialize_pinecone()
         paper_url = request.json['paperurl'] if request.json['paperurl'] else ''
 
         # Extract the paper ID using string slicing
@@ -141,12 +141,13 @@ def index_paper():
 @app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
     
-    paper_id = request.json["f_path"] if request.json["f_path"] else ""
-    question = request.json["message"] if request.json["message"] else ""
+    if request.method == 'POST':
+        paper_id = request.json["f_path"]
+        question = request.json["message"]
 
-    answer = ask_questions(question=question, paper_id=paper_id)
+        answer = ask_questions(question=question, paper_id=paper_id)
 
-    return {"answer": answer}
+        return {"answer": answer}
 
 
 @cross_origin(supports_credentials=True)
@@ -248,16 +249,25 @@ def chat():
 
 @app.route('/clearjsons', methods=['POST'])
 def clear_pdfs():
-    pdfs_dir = 'static/index'
-    exception_file = 'i.json'
+    json_dir = 'static/index'
+    arxiv_dir = 'arxiv_papers'
+    exception_json = 'i.json'
+    exception_paper = 'p.pdf'
+
 
     try:
-        for filename in os.listdir(pdfs_dir):
-            if filename != exception_file and filename.endswith('.json'):
-                file_path = os.path.join(pdfs_dir, filename)
+        for filename in os.listdir(json_dir):
+            if filename != exception_json and filename.endswith('.json'):
+                file_path = os.path.join(json_dir, filename)
                 os.remove(file_path)
 
-        return jsonify(message='JSONs cleared successfully'), 200
+        for filename in os.listdir(arxiv_dir):
+            if filename != exception_paper and filename.endswith('.json'):
+                file_path = os.path.join(arxiv_dir, filename)
+                os.remove(file_path)
+
+        return jsonify(message='JSONs and ArXiv cleared successfully'), 200
+    
     except Exception as e:
         return jsonify(error=str(e)), 500
 
