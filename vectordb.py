@@ -47,7 +47,7 @@ def split_pdf_into_chunks(paper_id: str):
     )
     print("Split function got paper id as", paper_id)
     # load the PDF
-    loader = PyMuPDFLoader(f"arxiv_papers/{paper_id}")
+    loader = PyMuPDFLoader(f"arxiv_papers/{paper_id}.pdf")
 
     # split the loaded PDF
     pages = loader.load_and_split(
