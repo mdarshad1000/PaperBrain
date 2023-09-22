@@ -53,7 +53,7 @@ def relevance():
 
         res = {"papers": papers_list}
         return res, 200, {'Access-Control-Allow-Origin': '*'}
-        
+
 # Sort by last updated
 @cross_origin('*')
 @app.route('/lastupdated', methods=['GET', 'POST'])
@@ -128,38 +128,34 @@ def index_paper():
 @cross_origin(supports_credentials=True)
 @app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
-    
-    if request.method == 'POST':
-        
-        paper_id = request.json["f_path"]
-        question = request.json["message"]
 
-        answer = ask_questions(question=question, paper_id=paper_id)
+    paper_id = request.json["f_path"]
+    question = request.json["message"]
 
-        return {"answer": answer}
+    answer = ask_questions(question=question, paper_id=paper_id)
+
+    return {"answer": answer}
 
 
 @cross_origin(supports_credentials=True)
 @app.route('/getpdf', methods=['GET', 'POST'])
 def get_pdf():
-
     # Download the uploaded pdf from Firebase link
-    if request.method == 'POST':
-        url = request.json["pdfURL"]
-        parsed_url = urlparse(url)
-        pdf = os.path.basename(parsed_url.path)
-        f_path = str(uuid.uuid4())   # unique identifier for each user
-        response = requests.get(url)
+    url = request.json["pdfURL"]
+    parsed_url = urlparse(url)
+    pdf = os.path.basename(parsed_url.path)
+    f_path = str(uuid.uuid4())   # unique identifier for each user
+    response = requests.get(url)
 
-        if not os.path.exists(f'static/pdfs/{f_path}'):
-            os.makedirs(f'static/pdfs/{f_path}')
+    if not os.path.exists(f'static/pdfs/{f_path}'):
+        os.makedirs(f'static/pdfs/{f_path}')
 
-        # Check if the request was successful
-        if response.status_code == 200:
-            with open(f'static/pdfs/{f_path}/{pdf}.pdf', 'wb') as f:
-                f.write(response.content)
+    # Check if the request was successful
+    if response.status_code == 200:
+        with open(f'static/pdfs/{f_path}/{pdf}.pdf', 'wb') as f:
+            f.write(response.content)
 
-        return {"f_path":f_path}
+    return {"f_path":f_path}
     
 # @cross_origin(supports_credentials=True)
 @app.route('/chat', methods=['GET', 'POST'])
@@ -168,7 +164,7 @@ def chat():
     query = request.json["message"] if request.json["message"] else ""
 
     if os.path.exists(f'static/index/{f_path}.json'):
-        print("Loading index loop")
+        print("Already Indexed")
 
         # remove the uploaded pdf once indexed
         directory_to_delete = f'static/pdfs/{f_path}'
@@ -187,7 +183,7 @@ def chat():
         return {"answer":final_answer}
     
     else:
-        print("Creating index loop")
+        print("Creating Index")
         # Set path of indexed jsons
 
         index_path = f"static/index/{f_path}.json"
@@ -214,6 +210,7 @@ def chat():
 
 @app.route('/clearjsons', methods=['POST'])
 def clear_pdfs():
+
     json_dir = 'static/index'
     arxiv_dir = 'arxiv_papers'
     exception_json = 'i.json'
