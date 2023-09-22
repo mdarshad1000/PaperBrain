@@ -10,6 +10,7 @@ import os
 from uuid import uuid4
 import openai
 from typing import List
+import itertools
 
 load_dotenv()
 
@@ -24,6 +25,9 @@ openai.api_key = OPENAI_API_KEY
 
 # Initialize Pinecone Index
 def initialize_pinecone():
+    '''
+    Initialize the Pinecone Index with the Given Index Name
+    '''
     index_name = 'ai-journal'
     # initialize connection to pinecone (get API key at app.pinecone.io)
     pinecone.init(
@@ -39,7 +43,6 @@ def initialize_pinecone():
 
 
 def split_pdf_into_chunks(paper_id: str):
-    
     # Create a splitter object
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=2000,
@@ -57,42 +60,48 @@ def split_pdf_into_chunks(paper_id: str):
     texts = [] 
     metadatas = [] 
 
-    # Adding text chunks, creating chunk IDs and preparing Metadata
-    for item in range(len(pages)):
-
-        texts.append(pages[item].page_content)
-        print(len(texts), chr(10), texts)
+    # Adding text chunks and preparing Metadata
+    for item, page in enumerate(pages):
+        texts.append(page.page_content)
         metadata = {
-            'paper-id': pages[item].metadata['source'],
-            'source': pages[item].page_content,
+            'paper-id': page.metadata['source'],
+            'source': page.page_content,
         }
-
-        record_metadatas = [{
-            "chunk": j, "text": text, **metadata
-        } for j, text in enumerate(texts)]
-
-        metadatas.extend(record_metadatas)
-
-        print(metadatas)
-
-    return texts, metadatas, 
-
-
-def embed_and_upsert(paper_id: str, texts: List[str], metadatas: List[str]):
+        record_metadata = {
+            "chunk": item, "text": texts[item], **metadata
+        }
+        metadatas.append(record_metadata)
     
+    return texts, metadatas
+
+
+def chunks(iterable, batch_size=100):
+    """A helper function to break an iterable into chunks of size batch_size."""
+    it = iter(iterable)
+    chunk = tuple(itertools.islice(it, batch_size))
+    while chunk:
+        yield chunk
+        chunk = tuple(itertools.islice(it, batch_size))
+        
+
+def embed_and_upsert(paper_id: str, texts: List[str], metadatas: List[str]) -> str:
     # Create an embedding object
     embed = OpenAIEmbeddings(
         model=MODEL,
         openai_api_key=OPENAI_API_KEY
     )
 
-    index = initialize_pinecone()
+    # Create pinecone.Index with pool_threads=30 (limits to 30 simultaneous requests)
+    index = pinecone.Index('ai-journal', pool_threads=30)
     ids = [str(uuid4()) for _ in range(len(texts))]
 
-    embeds = embed.embed_documents(texts)
-    print(embeds)
-
-    index.upsert(vectors=zip(ids, embeds, metadatas), namespace=paper_id)
+    # Send upsert requests in parallel
+    async_results = [
+        index.upsert(vectors=zip(ids_chunk, embeds_chunk, metadatas_chunk), namespace=paper_id, async_req=True)
+        for ids_chunk, embeds_chunk, metadatas_chunk in zip(chunks(ids), chunks(embed.embed_documents(texts)), chunks(metadatas))
+    ]
+    # Wait for and retrieve responses (this raises in case of error)
+    [async_result.get() for async_result in async_results]
 
     return "Embedded the Arxiv Paper"
 
@@ -117,7 +126,7 @@ def ask_questions(question: str, paper_id: int):
     llm = ChatOpenAI(
         openai_api_key=OPENAI_API_KEY,
         model_name='gpt-3.5-turbo',
-        temperature=0.0
+        temperature=0.0,
     )
 
     qa = RetrievalQA.from_chain_type(
@@ -125,44 +134,28 @@ def ask_questions(question: str, paper_id: int):
         chain_type="stuff",
         retriever=vectorstore.as_retriever(),
     )
-
-    return qa.run(f'question: {question}')
+    return qa.run(question)
 
 
 def check_namespace_exists(paper_id):
-
-    initialize_pinecone()
-    
     index = pinecone.Index('ai-journal') 
     index_stats_response = index.describe_index_stats()
-    stats_str = str(index_stats_response)
-
-    flag = None
-    if paper_id in stats_str:
-        flag = True
-    else:
-        flag = False
-
-    return flag
+    index_stats_response = str(index_stats_response)
+    return paper_id in index_stats_response
 
 
 def delete_namespace():
-
-    initialize_pinecone()
     index = pinecone.Index('ai-journal') 
+    delete_response = index.delete(delete_all=True, namespace='abcd')
 
-    delete_response = index.delete(delete_all=True, namespace='1234.pdf')
 
-# stats_str = stats_str.replace("'", "\"")
-# stats_dict = json.loads(stats_str)
-# answer = [i.keys() for i in stats_dict["namespaces"]]
-# print(answer)
-# index.delete(delete_all=True, namespace="1234.pdf")
 
-# paper_ida, textsa, metadatasa = split_pdf_into_chunks('1234.pdf')
 
-# embed_and_upsert(paper_id=paper_ida, index=index, texts=textsa, metadatas=metadatasa)
 
-# print(ask_questions('what is this paper about', paper_id='121.pdf'))
+# textsa, metadatasa = split_pdf_into_chunks('abcd')
+
+# embed_and_upsert(paper_id='abcd', texts=textsa, metadatas=metadatasa)
+# print(split_pdf_into_chunks('POA'))
+# print(ask_questions('what is this paper about', paper_id='1802.06593v1'))
 
 

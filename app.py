@@ -29,7 +29,6 @@ def check():
 @cross_origin('*')
 @app.route('/', methods=['GET', 'POST'])
 def relevance():
-    
     if request.method == 'POST':
         # Get query from user
         user_query = request.json["query"]
@@ -40,25 +39,21 @@ def relevance():
             max_results=100,
             sort_by=arxiv.SortCriterion.Relevance
         )
-        
-        # List to store required paper details
-        papers_list = []
-        
-        # Iterate through search results and append paper details to list
-        for result in search_paper.results():
-            papers_json = {
-                'paper_title':result.title,
-                'paper_url':result.pdf_url,
-                'paper_summary':result.summary,
-                'paper_authors':", ".join([author.name for author in result.authors]),
-            }
 
-            papers_list.append(papers_json)
+        # List comprehension to store required paper details
+        papers_list = [
+            {
+                'paper_title': result.title,
+                'paper_url': result.pdf_url,
+                'paper_summary': result.summary,
+                'paper_authors': ", ".join([author.name for author in result.authors]),
+            }
+            for result in search_paper.results()
+        ]
 
         res = {"papers": papers_list}
         return res, 200, {'Access-Control-Allow-Origin': '*'}
-
-
+        
 # Sort by last updated
 @cross_origin('*')
 @app.route('/lastupdated', methods=['GET', 'POST'])
@@ -99,25 +94,19 @@ def lastUpdated():
 def index_paper():
 
     if request.method == 'POST':
-        initialize_pinecone()
         paper_url = request.json['paperurl'] if request.json['paperurl'] else ''
 
-        # Extract the paper ID using string slicing
-        start_index = paper_url.rfind("/") + 1  # Find the index of the last "/"
-        end_index = paper_url.rfind(".pdf")  # Find the index of ".pdf"
+        # Extract the paper ID
+        paper_id = os.path.splitext(os.path.basename(paper_url))[0]
 
-        paper_id = None
-        if start_index != -1 and end_index != -1:
-            paper_id = paper_url[start_index:end_index]
-
+        # Check if a namespace exists in Pinecone with this paper ID
         flag = check_namespace_exists(paper_id=paper_id)
 
-        if flag is True:
-            print("already indexed")
-            return {"paper_id": paper_id}
+        if flag:
+            print("Already Indexed")
         
         else:
-            print("not indexed")
+            print("Not Indexed, indexing now...")
 
             response = requests.get(paper_url)
 
@@ -133,8 +122,7 @@ def index_paper():
             # Create embeddings and upsert to Pinecone
             embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
 
-            return {"paper_id": paper_id}
-
+    return {"paper_id": paper_id}
 
 
 @cross_origin(supports_credentials=True)
@@ -142,36 +130,13 @@ def index_paper():
 def ask_arxiv():
     
     if request.method == 'POST':
+        
         paper_id = request.json["f_path"]
         question = request.json["message"]
 
         answer = ask_questions(question=question, paper_id=paper_id)
 
         return {"answer": answer}
-
-
-@cross_origin(supports_credentials=True)
-@app.route('/explain', methods=['POST'])
-def explain():
-
-    # Explain the text for Papers loaded via arXiv
-    if request.method == 'POST':
-        # excerpt = request.json
-        # print(excerpt)
-        # response = openai.Completion.create(
-        # model="text-davinci-002",
-        # prompt=f"The user is a novice reading a research paper. Explain the following text:\n{excerpt}",
-        # temperature=0.8,
-        # max_tokens=293,
-        # top_p=1,
-        # frequency_penalty=0,
-        # presence_penalty=0
-        # )
-        # final_response = response["choices"][0]["text"].lstrip()
-
-        return {"answer":'Sorry! You cannot chat with the paper right now. Please upload your own paper for now :)'}
-        
-    return "<h1>This is working as well</h1>"
 
 
 @cross_origin(supports_credentials=True)
@@ -280,4 +245,5 @@ def view_status():
 
 
 if __name__ == '__main__':
+    initialize_pinecone()
     app.run(debug=True, port=5000)
