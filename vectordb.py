@@ -127,6 +127,7 @@ def ask_questions(question: str, paper_id: int):
         openai_api_key=OPENAI_API_KEY,
         model_name='gpt-3.5-turbo',
         temperature=0.0,
+        streaming=True
     )
 
     qa = RetrievalQA.from_chain_type(
@@ -149,8 +150,9 @@ def delete_namespace():
     delete_response = index.delete(delete_all=True, namespace='abcd')
 
 
-
-
+# initialize_pinecone()
+# index = pinecone.Index('ai-journal') 
+# delete_response = index.delete(delete_all=True, namespace='2204.04477v1')
 
 # textsa, metadatasa = split_pdf_into_chunks('abcd')
 

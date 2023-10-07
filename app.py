@@ -36,7 +36,7 @@ def relevance():
         # Search for papers
         search_paper = arxiv.Search(
             query=user_query,
-            max_results=100,
+            max_results=50,
             sort_by=arxiv.SortCriterion.Relevance
         )
 
@@ -52,42 +52,9 @@ def relevance():
         ]
 
         res = {"papers": papers_list}
+
         return res, 200, {'Access-Control-Allow-Origin': '*'}
-
-# Sort by last updated
-@cross_origin('*')
-@app.route('/lastupdated', methods=['GET', 'POST'])
-def lastUpdated():
-
-    if request.method == 'POST':
-        # Get query from user
-        user_query = request.json["query"]
-        
-        # Search for papers
-        search_paper = arxiv.Search(
-            query=user_query,
-            max_results=100,
-            sort_by=arxiv.SortCriterion.SubmittedDate
-        )
-        
-        # List to store required paper details
-        papers_list = []
-        
-        # Iterate through search results and append paper details to list
-        for result in search_paper.results():
-            papers_json = {
-                'paper_title':result.title,
-                'paper_url':result.pdf_url,
-                'paper_summary':result.summary,
-                'paper_authors':", ".join([author.name for author in result.authors]),
-            }
     
-            # print(papers_json)
-            papers_list.append(papers_json)
-
-        res = {"papers": papers_list}
-        return res, 200, {'Access-Control-Allow-Origin': '*'}
-
 
 @cross_origin(supports_credentials=True)
 @app.route('/indexpaper', methods=['POST'])
