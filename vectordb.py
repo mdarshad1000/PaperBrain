@@ -17,7 +17,8 @@ import os
 PROMPT_TEMPLATE = """
 You are an expert assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
 Use four-five sentences and keep the answer concise and to the point, unless the user asks you to be detailed.
-Be very respectful and polite. Give the answers in points whenever required.
+Be very polite and respectful. Give the answers in points whenever required. Use paragraphs and proper formatting. 
+If not required then do not take the entire context for answering. Choose only the most relevant information from the context for answering.
 
 Question: {question} 
 
@@ -61,8 +62,8 @@ def initialize_pinecone():
 def split_pdf_into_chunks(paper_id: str):
     # Create a splitter object
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1500,
-        chunk_overlap=150,
+        chunk_size=1000,
+        chunk_overlap=200,
     )  
     print("Split function got paper id as", paper_id)
     # load the PDF
@@ -161,7 +162,6 @@ def ask_questions(question: str, paper_id: int):
     answer_w_metadata = qa(question)
 
     answer = answer_w_metadata['result']
-
     page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
     # source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
 
@@ -181,7 +181,7 @@ def delete_namespace():
 
 
 initialize_pinecone()
-index = pinecone.Index('ai-journal')
+# index = pinecone.Index('ai-journal')
 
 
 # delete_response = index.delete(delete_all=True, namespace='2204.04477v1')
