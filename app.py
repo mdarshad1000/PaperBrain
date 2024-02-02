@@ -62,12 +62,12 @@ def ask_arxiv():
     paper_id = request.json["f_path"]
     question = request.json["message"]
 
-    answer, page_no, source_text = ask_questions(question=question, paper_id=paper_id)
+    answer, page_no = ask_questions(question=question, paper_id=paper_id)
 
     return {
         "answer": answer,
         "page_no": page_no,
-        "source_text": source_text
+        # "source_text": source_text
         }
 
     # return Response(chain(question, paper_id), mimetype='text/event-stream')

@@ -15,10 +15,9 @@ import os
 
 
 PROMPT_TEMPLATE = """
-
 You are an expert assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
-If you don't know the answer, just say that you don't know. Use four sentences maximum and keep the answer concise.
-Be very respectful and polite. Do not make things up if you can't answer from the given conotext.
+Use four sentences maximum and keep the answer concise unless the user asks you to be detailed.
+Be very respectful and polite.
 
 Question: {question} 
 
@@ -151,7 +150,7 @@ def ask_questions(question: str, paper_id: int):
     qa = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vectorstore.as_retriever(search_kwargs={'k':3}),
+        retriever=vectorstore.as_retriever(search_kwargs={'k':4}),
         # verbose=True,
         return_source_documents=True,
         chain_type_kwargs={
@@ -164,10 +163,9 @@ def ask_questions(question: str, paper_id: int):
     answer = answer_w_metadata['result']
 
     page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
-    source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
-    source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
+    # source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
 
-    return answer, page_no, source_text
+    return answer, page_no[:2]
 
 
 def check_namespace_exists(paper_id):
