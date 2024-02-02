@@ -1,16 +1,33 @@
-from langchain.document_loaders import PyMuPDFLoader
+from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQAWithSourcesChain, RetrievalQA
+from langchain.chains import RetrievalQAWithSourcesChain, RetrievalQA, ConversationalRetrievalChain
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
-import pinecone
-import os
 from uuid import uuid4
-import openai
 from typing import List
 import itertools
+import pinecone
+import openai
+import os
+
+
+PROMPT_TEMPLATE = """
+
+You are an expert assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
+If you don't know the answer, just say that you don't know. Use four sentences maximum and keep the answer concise.
+Be very respectful and polite. Do not make things up if you can't answer from the given conotext.
+
+Question: {question} 
+
+Context: {context} 
+
+Answer:
+"""
+
+prompt = PromptTemplate.from_template(template=PROMPT_TEMPLATE,)
 
 load_dotenv()
 
@@ -26,7 +43,7 @@ openai.api_key = OPENAI_API_KEY
 # Initialize Pinecone Index
 def initialize_pinecone():
     '''
-    Initialize the Pinecone Index with the Given Index Name
+    Initialize the Pinecone Index with the Given Index Name.
     '''
     index_name = 'ai-journal'
     # initialize connection to pinecone (get API key at app.pinecone.io)
@@ -45,16 +62,16 @@ def initialize_pinecone():
 def split_pdf_into_chunks(paper_id: str):
     # Create a splitter object
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000,
-        chunk_overlap=400,
-    )
+        chunk_size=1500,
+        chunk_overlap=150,
+    )  
     print("Split function got paper id as", paper_id)
     # load the PDF
-    loader = PyMuPDFLoader(f"arxiv_papers/{paper_id}.pdf")
+    loader = PyPDFLoader(f"arxiv_papers/{paper_id}.pdf")
 
     # split the loaded PDF
-    pages = loader.load_and_split(
-        text_splitter=text_splitter)
+    pages = loader.load()
+    
 
     # Initialize Data structures for for data prep
     texts = [] 
@@ -66,6 +83,7 @@ def split_pdf_into_chunks(paper_id: str):
         metadata = {
             'paper-id': page.metadata['source'],
             'source': page.page_content,
+            'page_no':int(page.metadata['page']) + 1
         }
         record_metadata = {
             "chunk": item, "text": texts[item], **metadata
@@ -127,15 +145,29 @@ def ask_questions(question: str, paper_id: int):
         openai_api_key=OPENAI_API_KEY,
         model_name='gpt-3.5-turbo',
         temperature=0.0,
-        streaming=True
+        streaming=True,
     )
 
     qa = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vectorstore.as_retriever(),
+        retriever=vectorstore.as_retriever(search_kwargs={'k':3}),
+        # verbose=True,
+        return_source_documents=True,
+        chain_type_kwargs={
+            "prompt": prompt,
+            "verbose": True,
+                        }
     )
-    return qa.run(question)
+    answer_w_metadata = qa(question)
+
+    answer = answer_w_metadata['result']
+
+    page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
+    source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
+    source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
+
+    return answer, page_no, source_text
 
 
 def check_namespace_exists(paper_id):
@@ -150,14 +182,24 @@ def delete_namespace():
     delete_response = index.delete(delete_all=True, namespace='abcd')
 
 
-# initialize_pinecone()
-# index = pinecone.Index('ai-journal') 
+initialize_pinecone()
+index = pinecone.Index('ai-journal')
+
+
 # delete_response = index.delete(delete_all=True, namespace='2204.04477v1')
 
 # textsa, metadatasa = split_pdf_into_chunks('abcd')
 
 # embed_and_upsert(paper_id='abcd', texts=textsa, metadatas=metadatasa)
 # print(split_pdf_into_chunks('POA'))
-# print(ask_questions('what is this paper about', paper_id='1802.06593v1'))
+# print(len(ask_questions('what is this paper about', paper_id='1802.06593v1')))
+# print('\n\n\n\n\n')
 
+# print(ask_questions('what is this paper about', paper_id='1802.06593v1')['query'])
+# print('\n\n\n\n\n')
 
+# print(ask_questions('what is this paper about', paper_id='1802.06593v1')['result'])
+# print('\n\n\n\n\n')
+
+# print(ask_questions('what is metastable electron pairs in electron', paper_id='1802.06593v1')['source_documents'])
+initialize_pinecone()

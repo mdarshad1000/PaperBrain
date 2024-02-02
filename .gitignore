@@ -5,3 +5,5 @@ pkgversion.py
 __pycache__
 ArxivSearch.ipynb
 embeddings
+test.py
+legacy.py

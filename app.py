@@ -1,17 +1,13 @@
 # Import dependencies
-from gpt_index import GPTSimpleVectorIndex, SimpleDirectoryReader, LLMPredictor
-from langchain import OpenAI
 from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists, initialize_pinecone
 from flask_cors import CORS, cross_origin
-from urllib.parse import urlparse
+
 from flask import Flask, request, jsonify
 import requests
 import openai
-import shutil
-import arxiv
-import uuid
-import os
 
+import os
+initialize_pinecone()
 # Set API Key
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -20,42 +16,7 @@ app = Flask(__name__)
 CORS(app,)
 
 
-@app.route('/check')
-def check():
-    return 'This is working'
-
-
-# Sort by relevance
-@cross_origin('*')
-@app.route('/', methods=['GET', 'POST'])
-def relevance():
-    if request.method == 'POST':
-        # Get query from user
-        user_query = request.json["query"]
-
-        # Search for papers
-        search_paper = arxiv.Search(
-            query=user_query,
-            max_results=50,
-            sort_by=arxiv.SortCriterion.Relevance
-        )
-
-        # List comprehension to store required paper details
-        papers_list = [
-            {
-                'paper_title': result.title,
-                'paper_url': result.pdf_url,
-                'paper_summary': result.summary,
-                'paper_authors': ", ".join([author.name for author in result.authors]),
-            }
-            for result in search_paper.results()
-        ]
-
-        res = {"papers": papers_list}
-
-        return res, 200, {'Access-Control-Allow-Origin': '*'}
-    
-
+# Index Arxiv Paper
 @cross_origin(supports_credentials=True)
 @app.route('/indexpaper', methods=['POST'])
 def index_paper():
@@ -71,7 +32,7 @@ def index_paper():
 
         if flag:
             print("Already Indexed")
-        
+
         else:
             print("Not Indexed, indexing now...")
 
@@ -84,14 +45,16 @@ def index_paper():
 
             # Split PDF into chunks
             texts, metadatas = split_pdf_into_chunks(paper_id=paper_id)
-            print("chunked",paper_id)
+            print("chunked", paper_id)
 
             # Create embeddings and upsert to Pinecone
-            embed_and_upsert(paper_id=paper_id, texts=texts, metadatas=metadatas)
+            embed_and_upsert(paper_id=paper_id, texts=texts,
+                             metadatas=metadatas)
 
     return {"paper_id": paper_id}
 
 
+# Chat with arxiv paper
 @cross_origin(supports_credentials=True)
 @app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
@@ -99,80 +62,15 @@ def ask_arxiv():
     paper_id = request.json["f_path"]
     question = request.json["message"]
 
-    answer = ask_questions(question=question, paper_id=paper_id)
+    answer, page_no, source_text = ask_questions(question=question, paper_id=paper_id)
 
-    return {"answer": answer}
+    return {
+        "answer": answer,
+        "page_no": page_no,
+        "source_text": source_text
+        }
 
-
-@cross_origin(supports_credentials=True)
-@app.route('/getpdf', methods=['GET', 'POST'])
-def get_pdf():
-    # Download the uploaded pdf from Firebase link
-    url = request.json["pdfURL"]
-    parsed_url = urlparse(url)
-    pdf = os.path.basename(parsed_url.path)
-    f_path = str(uuid.uuid4())   # unique identifier for each user
-    response = requests.get(url)
-
-    if not os.path.exists(f'static/pdfs/{f_path}'):
-        os.makedirs(f'static/pdfs/{f_path}')
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        with open(f'static/pdfs/{f_path}/{pdf}.pdf', 'wb') as f:
-            f.write(response.content)
-
-    return {"f_path":f_path}
-    
-# @cross_origin(supports_credentials=True)
-@app.route('/chat', methods=['GET', 'POST'])
-def chat():
-    f_path = request.json["f_path"] if request.json["f_path"] else ""
-    query = request.json["message"] if request.json["message"] else ""
-
-    if os.path.exists(f'static/index/{f_path}.json'):
-        print("Already Indexed")
-
-        # remove the uploaded pdf once indexed
-        directory_to_delete = f'static/pdfs/{f_path}'
-        try:
-            # Use shutil.rmtree() to remove the directory and its contents
-            shutil.rmtree(directory_to_delete)
-            print(f"Directory '{directory_to_delete}' and its contents have been successfully deleted.")
-        except OSError as e:
-            print(f"Error: {e}")
-
-
-        # load from disk
-        loaded_index = GPTSimpleVectorIndex.load_from_disk(f'static/index/{f_path}.json')
-        response = loaded_index.query(query, verbose=True, response_mode="default")
-        final_answer = str(response)
-        return {"answer":final_answer}
-    
-    else:
-        print("Creating Index")
-        # Set path of indexed jsons
-
-        index_path = f"static/index/{f_path}.json"
-
-        documents = SimpleDirectoryReader(f'static/pdfs/{f_path}').load_data()
-
-        # builds an index over the documents in the data folder
-        index = GPTSimpleVectorIndex(documents)
-
-        # save the index to disk
-        index.save_to_disk(index_path)
-
-        # define the llm to be used
-        llm_predictor = LLMPredictor(llm=OpenAI(temperature=0, model_name="text-davinci-003"))
-
-        # load from disk
-        loaded_index = GPTSimpleVectorIndex.load_from_disk(index_path, llm_predictor=llm_predictor)
-        response = loaded_index.query(query, verbose=True, response_mode="default")
-
-        final_answer = str(response)
-        print(f"This is the the response for your question\nQuestion: {query}\nAnswer{final_answer}")
-        return {"answer":final_answer}
+    # return Response(chain(question, paper_id), mimetype='text/event-stream')
 
 
 @app.route('/clearjsons', methods=['POST'])
@@ -182,7 +80,6 @@ def clear_pdfs():
     arxiv_dir = 'arxiv_papers'
     exception_json = 'i.json'
     exception_paper = 'p.pdf'
-
 
     try:
         for filename in os.listdir(json_dir):
@@ -196,7 +93,7 @@ def clear_pdfs():
                 os.remove(file_path)
 
         return jsonify(message='JSONs and ArXiv cleared successfully'), 200
-    
+
     except Exception as e:
         return jsonify(error=str(e)), 500
 
@@ -208,6 +105,6 @@ def view_status():
     return {"filename": files}
 
 
+
 if __name__ == '__main__':
-    initialize_pinecone()
     app.run(debug=True, port=5000)
