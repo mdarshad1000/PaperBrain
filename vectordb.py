@@ -16,8 +16,8 @@ import os
 
 PROMPT_TEMPLATE = """
 You are an expert assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
-Use four sentences maximum and keep the answer concise unless the user asks you to be detailed.
-Be very respectful and polite.
+Use four-five sentences and keep the answer concise and to the point, unless the user asks you to be detailed.
+Be very respectful and polite. Give the answers in points whenever required.
 
 Question: {question} 
 
@@ -200,4 +200,4 @@ index = pinecone.Index('ai-journal')
 # print('\n\n\n\n\n')
 
 # print(ask_questions('what is metastable electron pairs in electron', paper_id='1802.06593v1')['source_documents'])
-initialize_pinecone()
+# initialize_pinecone()
