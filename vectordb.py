@@ -1,6 +1,7 @@
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQAWithSourcesChain, RetrievalQA, ConversationalRetrievalChain
+from langchain.chains import RetrievalQAWithSourcesChain, RetrievalQA
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chat_models import ChatOpenAI
@@ -15,10 +16,10 @@ import os
 
 
 PROMPT_TEMPLATE = """
-You are an expert assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
+You are an expert assistant for question-answering tasks in Urdu. Use the following pieces of retrieved context to answer the question. 
 Use four-five sentences and keep the answer concise and to the point, unless the user asks you to be detailed.
-Be very polite and respectful. Give the answers in points whenever required. Use paragraphs and proper formatting. 
-If not required then do not take the entire context for answering. Choose only the most relevant information from the context for answering.
+Be very polite and respectful.
+
 
 Question: {question} 
 
@@ -62,8 +63,8 @@ def initialize_pinecone():
 def split_pdf_into_chunks(paper_id: str):
     # Create a splitter object
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=1500,
+        chunk_overlap=300,
     )  
     print("Split function got paper id as", paper_id)
     # load the PDF
@@ -143,9 +144,10 @@ def ask_questions(question: str, paper_id: int):
 
     llm = ChatOpenAI(
         openai_api_key=OPENAI_API_KEY,
-        model_name='gpt-3.5-turbo',
+        model_name='gpt-3.5-turbo-16k',
         temperature=0.0,
         streaming=True,
+        callbacks=[StreamingStdOutCallbackHandler()],
     )
 
     qa = RetrievalQA.from_chain_type(
@@ -164,8 +166,9 @@ def ask_questions(question: str, paper_id: int):
     answer = answer_w_metadata['result']
     page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
     # source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
-
-    return answer, page_no[:2]
+    
+    return answer
+    
 
 
 def check_namespace_exists(paper_id):
@@ -177,11 +180,13 @@ def check_namespace_exists(paper_id):
 
 def delete_namespace():
     index = pinecone.Index('ai-journal') 
-    delete_response = index.delete(delete_all=True, namespace='abcd')
+    delete_response = index.delete(delete_all=True, namespace='1706.03762v7')
 
 
 initialize_pinecone()
 # index = pinecone.Index('ai-journal')
+
+# delete_namespace()
 
 
 # delete_response = index.delete(delete_all=True, namespace='2204.04477v1')
