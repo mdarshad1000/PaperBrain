@@ -64,7 +64,7 @@ def ask_arxiv():
 
     # answer = ask_questions(question=question, paper_id=paper_id)
 
-    return Response(ask_questions(paper_id=paper_id, question=question), mimetype='text/event-stream')
+    return Response(ask_questions(paper_id=paper_id, question=question), content_type='text/event-stream')
 
     # return {
     #     "answer": answer,
