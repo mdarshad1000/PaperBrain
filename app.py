@@ -1,8 +1,8 @@
 # Import dependencies
 from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists, initialize_pinecone
 from flask_cors import CORS, cross_origin
-
-from flask import Flask, request, jsonify, stream_with_context, Response
+from flask_socketio import SocketIO
+from flask import Flask, request, jsonify, Response
 import requests
 import openai
 
@@ -62,15 +62,15 @@ def ask_arxiv():
     paper_id = request.json["f_path"]
     question = request.json["message"]
 
-    # answer = ask_questions(question=question, paper_id=paper_id)
+    answer, page_no = ask_questions(question=question, paper_id=paper_id) 
+    # return Response(ask_questions(paper_id=paper_id, question=question), mimetype='text/event-stream')
 
-    return Response(ask_questions(paper_id=paper_id, question=question), content_type='text/event-stream')
 
-    # return {
-    #     "answer": answer,
-    #     "page_no": page_no,
-    #     # "source_text": source_text
-    #     }
+    return {
+        "answer": answer,
+        "page_no": page_no,
+        # "source_text": source_text
+        }
 
 
 

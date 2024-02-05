@@ -158,7 +158,7 @@ def ask_questions(question: str, paper_id: int):
         return_source_documents=True,
         chain_type_kwargs={
             "prompt": prompt,
-            "verbose": True,
+            # "verbose": True,
                         }
     )
     answer_w_metadata = qa(question)
@@ -166,8 +166,9 @@ def ask_questions(question: str, paper_id: int):
     answer = answer_w_metadata['result']
     page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
     # source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
-    
-    return answer
+    # for line in answer_w_metadata:
+    #     yield line
+    return answer, page_no
     
 
 
