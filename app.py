@@ -67,7 +67,7 @@ def ask_arxiv():
 
     return {
         "answer": answer,
-        "page_no": page_no,
+        "page_no": page_no[:2],
         # "source_text": source_text
         }
 

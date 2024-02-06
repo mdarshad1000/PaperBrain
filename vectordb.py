@@ -165,6 +165,7 @@ def ask_questions(question: str, paper_id: int):
 
     answer = answer_w_metadata['result']
     page_no = [(int(answer_w_metadata['source_documents'][i].metadata['page_no'])) for i in range(len(answer_w_metadata['source_documents']))]
+    # print(answer_w_metadata)
     # source_text = [answer_w_metadata['source_documents'][i].metadata['text'] for i in range(len(answer_w_metadata['source_documents']))]
     # for line in answer_w_metadata:
     #     yield line
