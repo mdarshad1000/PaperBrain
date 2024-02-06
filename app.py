@@ -1,8 +1,7 @@
 # Import dependencies
 from vectordb import embed_and_upsert, split_pdf_into_chunks, ask_questions, check_namespace_exists, initialize_pinecone
 from flask_cors import CORS, cross_origin
-from flask_socketio import SocketIO
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 import requests
 import openai
 
@@ -59,7 +58,7 @@ def index_paper():
 @app.route('/explain-new', methods=['POST'])
 def ask_arxiv():
 
-    paper_id = request.json["f_path"]
+    paper_id = request.json["paper_id"]
     question = request.json["message"]
 
     answer, page_no = ask_questions(question=question, paper_id=paper_id) 
